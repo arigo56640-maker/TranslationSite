@@ -1,4 +1,6 @@
 import os
+import subprocess
+from datetime import datetime
 from flask import Flask, request, jsonify, send_from_directory
 from openai import OpenAI, APIStatusError
 from dotenv import load_dotenv
@@ -23,10 +25,30 @@ ERROR_MESSAGES = {
 }
 GENERIC_SERVER_ERROR = "אירעה שגיאת שרת כללית, אנא נסה שוב."
 
+def _get_last_modified():
+    try:
+        result = subprocess.run(
+            ["git", "log", "-1", "--format=%cd", "--date=format:%Y-%m-%d %H:%M"],
+            capture_output=True, text=True, cwd=os.path.dirname(os.path.abspath(__file__))
+        )
+        ts = result.stdout.strip()
+        if ts:
+            return ts
+    except Exception:
+        pass
+    return datetime.now().strftime("%Y-%m-%d %H:%M")
+
+LAST_MODIFIED = _get_last_modified()
+
 
 @app.route("/")
 def index():
     return send_from_directory(app.root_path, "index.html")
+
+
+@app.route("/api/last-modified")
+def last_modified():
+    return jsonify({"last_modified": LAST_MODIFIED})
 
 
 @app.route("/api/translate", methods=["POST"])

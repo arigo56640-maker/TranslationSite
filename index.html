@@ -16,12 +16,21 @@
     </div>
     <textarea id="output-text" placeholder="Translation will appear here…" rows="8" readonly></textarea>
   </main>
+  <footer>
+    <span id="last-modified"></span>
+  </footer>
 
   <script>
     const btn = document.getElementById('translate-btn');
     const inputEl = document.getElementById('input-text');
     const outputEl = document.getElementById('output-text');
     const errorEl = document.getElementById('error-msg');
+
+    fetch('/api/last-modified')
+      .then(r => r.json())
+      .then(data => {
+        document.getElementById('last-modified').textContent = 'Last updated: ' + data.last_modified;
+      });
 
     btn.addEventListener('click', async () => {
       const text = inputEl.value.trim();
