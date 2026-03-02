@@ -18,7 +18,20 @@
   </main>
   <footer>
     <span id="last-modified"></span>
+    <button id="history-btn" title="Translation history">*</button>
   </footer>
+
+  <section id="history-section" hidden>
+    <h2>History</h2>
+    <div id="history-table-wrap">
+      <table id="history-table">
+        <thead>
+          <tr><th>#</th><th>Source</th><th>Translation</th><th>Date</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
 
   <script>
     const btn = document.getElementById('translate-btn');
@@ -64,6 +77,43 @@
         btn.textContent = 'Translate';
       }
     });
+    const historyBtn = document.getElementById('history-btn');
+    const historySection = document.getElementById('history-section');
+    const historyTbody = document.querySelector('#history-table tbody');
+
+    historyBtn.addEventListener('click', async () => {
+      if (!historySection.hidden) {
+        historySection.hidden = true;
+        return;
+      }
+      historyTbody.innerHTML = '<tr><td colspan="4">טוען…</td></tr>';
+      historySection.hidden = false;
+      try {
+        const res = await fetch('/api/history');
+        const data = await res.json();
+        if (data.error) {
+          historyTbody.innerHTML = `<tr><td colspan="4">${data.error}</td></tr>`;
+          return;
+        }
+        if (data.length === 0) {
+          historyTbody.innerHTML = '<tr><td colspan="4">אין רשומות עדיין.</td></tr>';
+          return;
+        }
+        historyTbody.innerHTML = data.map((r, i) => `
+          <tr>
+            <td>${i + 1}</td>
+            <td>${escapeHtml(r.source_text)}</td>
+            <td>${escapeHtml(r.translation)}</td>
+            <td>${r.created_at}</td>
+          </tr>`).join('');
+      } catch {
+        historyTbody.innerHTML = '<tr><td colspan="4">שגיאת רשת.</td></tr>';
+      }
+    });
+
+    function escapeHtml(str) {
+      return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
   </script>
 </body>
 </html>
