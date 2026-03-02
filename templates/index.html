@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Translator</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <main>
+    <h1>AI Translator</h1>
+    <textarea id="input-text" placeholder="Enter text in English or Hebrew…" rows="8"></textarea>
+    <div class="controls">
+      <button id="translate-btn">Translate</button>
+      <span id="error-msg" hidden></span>
+    </div>
+    <textarea id="output-text" placeholder="Translation will appear here…" rows="8" readonly></textarea>
+  </main>
+
+  <script>
+    const btn = document.getElementById('translate-btn');
+    const inputEl = document.getElementById('input-text');
+    const outputEl = document.getElementById('output-text');
+    const errorEl = document.getElementById('error-msg');
+
+    btn.addEventListener('click', async () => {
+      const text = inputEl.value.trim();
+      if (!text) return;
+
+      btn.disabled = true;
+      btn.textContent = 'Translating…';
+      errorEl.hidden = true;
+      outputEl.value = '';
+
+      try {
+        const res = await fetch('/api/translate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text }),
+        });
+
+        const data = await res.json();
+
+        if (data.translation) {
+          outputEl.value = data.translation;
+        } else {
+          errorEl.textContent = data.error || 'אירעה שגיאה לא צפויה.';
+          errorEl.hidden = false;
+        }
+      } catch {
+        errorEl.textContent = 'אירעה שגיאת רשת. אנא בדוק את החיבור.';
+        errorEl.hidden = false;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Translate';
+      }
+    });
+  </script>
+</body>
+</html>
