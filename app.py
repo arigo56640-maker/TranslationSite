@@ -1,5 +1,5 @@
 import os
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, send_from_directory
 from openai import OpenAI, APIStatusError
 from dotenv import load_dotenv
 
@@ -26,7 +26,7 @@ GENERIC_SERVER_ERROR = "אירעה שגיאת שרת כללית, אנא נסה �
 
 @app.route("/")
 def index():
-    return render_template("index.html")
+    return send_from_directory(app.root_path, "index.html")
 
 
 @app.route("/api/translate", methods=["POST"])
