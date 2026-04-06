@@ -6,7 +6,7 @@ from openai import OpenAI, APIStatusError
 from dotenv import load_dotenv
 import psycopg2
 
-load_dotenv()
+load_dotenv(override=True)
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 
@@ -44,12 +44,15 @@ def _get_last_modified():
 LAST_MODIFIED = _get_last_modified()
 
 
+def _get_conn():
+    return psycopg2.connect(DATABASE_URL, sslmode="require")
+
 def _init_db():
     if not DATABASE_URL:
         print("DATABASE_URL not set — translation logging disabled.")
         return
     try:
-        conn = psycopg2.connect(DATABASE_URL)
+        conn = _get_conn()
         with conn.cursor() as cur:
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS translations (
@@ -71,7 +74,7 @@ def _log_translation(source_text, translation):
     if not DATABASE_URL:
         return
     try:
-        conn = psycopg2.connect(DATABASE_URL)
+        conn = _get_conn()
         with conn.cursor() as cur:
             cur.execute(
                 "INSERT INTO translations (source_text, translation) VALUES (%s, %s)",
@@ -98,7 +101,7 @@ def history():
     if not DATABASE_URL:
         return jsonify([])
     try:
-        conn = psycopg2.connect(DATABASE_URL)
+        conn = _get_conn()
         with conn.cursor() as cur:
             cur.execute(
                 "SELECT source_text, translation, created_at "
