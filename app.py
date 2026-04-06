@@ -1,15 +1,14 @@
 import os
 import subprocess
 from datetime import datetime
-from urllib.parse import urlparse
 from flask import Flask, request, jsonify, send_from_directory
 from openai import OpenAI, APIStatusError
 from dotenv import load_dotenv
-import pymysql
+import psycopg2
 
 load_dotenv()
 
-MYSQL_URL = os.getenv("MYSQL_URL")
+DATABASE_URL = os.getenv("DATABASE_URL")
 
 app = Flask(__name__)
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -45,32 +44,22 @@ def _get_last_modified():
 LAST_MODIFIED = _get_last_modified()
 
 
-def _parse_mysql_url(url):
-    p = urlparse(url)
-    return {
-        "host": p.hostname,
-        "port": p.port or 3306,
-        "user": p.username,
-        "password": p.password,
-        "db": p.path.lstrip("/"),
-        "charset": "utf8mb4",
-    }
-
 def _init_db():
-    if not MYSQL_URL:
-        print("MYSQL_URL not set — translation logging disabled.")
+    if not DATABASE_URL:
+        print("DATABASE_URL not set — translation logging disabled.")
         return
     try:
-        conn = pymysql.connect(**_parse_mysql_url(MYSQL_URL), autocommit=True)
+        conn = psycopg2.connect(DATABASE_URL)
         with conn.cursor() as cur:
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS translations (
-                    id          INT      AUTO_INCREMENT PRIMARY KEY,
-                    source_text TEXT     NOT NULL,
-                    translation TEXT     NOT NULL,
-                    created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+                    id          SERIAL      PRIMARY KEY,
+                    source_text TEXT        NOT NULL,
+                    translation TEXT        NOT NULL,
+                    created_at  TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP
                 )
             """)
+        conn.commit()
         conn.close()
         print("DB ready: translations table verified.")
     except Exception as exc:
@@ -79,15 +68,16 @@ def _init_db():
 _init_db()
 
 def _log_translation(source_text, translation):
-    if not MYSQL_URL:
+    if not DATABASE_URL:
         return
     try:
-        conn = pymysql.connect(**_parse_mysql_url(MYSQL_URL), autocommit=True)
+        conn = psycopg2.connect(DATABASE_URL)
         with conn.cursor() as cur:
             cur.execute(
                 "INSERT INTO translations (source_text, translation) VALUES (%s, %s)",
                 (source_text, translation),
             )
+        conn.commit()
         conn.close()
     except Exception as exc:
         print(f"DB log failed: {exc}")
@@ -105,10 +95,10 @@ def last_modified():
 
 @app.route("/api/history")
 def history():
-    if not MYSQL_URL:
+    if not DATABASE_URL:
         return jsonify([])
     try:
-        conn = pymysql.connect(**_parse_mysql_url(MYSQL_URL), autocommit=True)
+        conn = psycopg2.connect(DATABASE_URL)
         with conn.cursor() as cur:
             cur.execute(
                 "SELECT source_text, translation, created_at "
